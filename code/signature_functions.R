@@ -93,10 +93,14 @@ mutationProfilePlot <- function(SNV_catalogues, sampleName, savePath=NULL, main=
     theme(plot.title = element_text(hjust=.5)) + 
     scale_fill_manual(values = c('C>A'='#55B9E8','C>G'='black','C>T'='#D03D32','T>A'='#CAC8C9','T>C'='#AACD70','T>G'='#E6C7C5'))  
   if(!is.null(savePath)){
-    pdf(savePath, width = 15, height = 5)
+    pdf(paste0(savePath,'/',sampleName,'.pdf'), width = 15, height = 5)
     print(muttypePlot)
     dev.off()
-  }else{return(muttypePlot)}
+    write.csv(temp, file=paste0(savePath,'/',sampleName,'.csv'),col.names=T, row.names=F, quote=F)
+  }else{
+    print(muttypePlot)
+  }
+  temp
 }
 
 cosmicPlot <- function(cosmic, signature, anno=""){
@@ -184,21 +188,25 @@ assignSignatures <- function(vcfs, dictionary, sampleNames=NULL, ref="BSgenome.H
   }
   #must be in matrix format
   dict <- as.matrix(dict)
-  if(is.null(sampleNames)){samNanes <- vcfs}else{samNames <- sampleNames}
-  grl <- read_vcfs_as_granges(vcfs_finished, samNames, ref_genome, type="snv")
-  mut_mat <- mut_matrix(vcf_list = grl_finished, ref_genome = ref_genome)
+  if(is.null(sampleNames)){samNames <- vcfs}else{samNames <- sampleNames}
   
+  #read in vcfs as granges objects
+  grl <- read_vcfs_as_granges(vcfs, samNames, ref_genome, type="snv")
+  mut_mat <- mut_matrix(vcf_list = grl, ref_genome = ref_genome)
+  
+  #run signatures
   fit_res <- fit_to_signatures(mut_mat, dict)
+  fit_res$mut_table <- mut_mat 
   fit_res
 }
 
 #de novo extraction:
-extract_snv_signatures <- function(vcfs, sampleNames=NULL, ref="BSgenome.Hsapiens.UCSC.hg19"){
+extract_snv_signatures <- function(vcfs, rank, sampleNames=NULL, ref="BSgenome.Hsapiens.UCSC.hg19"){
   if(is.null(sampleNames)){samNames <- vcfs}else{samNames <- sampleNames}
   grl <- read_vcfs_as_granges(vcfs, samNames, ref_genome, type="snv")
   mut_mat <- mut_matrix(vcf_list = grl, ref_genome = ref_genome)
   mut_mat <- mut_mat + 0.0001
-  nmf_res <- extract_signatures(mut_mat, rank = 2, nrun = 10, single_core = TRUE)
+  nmf_res <- extract_signatures(mut_mat, rank = rank, nrun = 10, single_core = TRUE)
   nmf_res
 }
 
